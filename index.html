@@ -1,209 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>FMPOS License Generator</title>
-
-<style>
-body {
-    font-family: Arial;
-    background:#f5f5f5;
-    padding:20px;
-}
-.container {
-    max-width:800px;
-    margin:auto;
-}
-.box {
-    background:#fff;
-    padding:20px;
-    border-radius:10px;
-    margin-bottom:20px;
-    border:1px solid #ddd;
-}
-input {
-    width:100%;
-    padding:10px;
-    margin-top:5px;
-}
-button {
-    margin-top:10px;
-    padding:10px;
-}
-.result {
-    margin-top:10px;
-    background:#eee;
-    padding:10px;
-}
-.prefix {
-    background:#eee;
-    padding:10px;
-}
-.flex {
-    display:flex;
-}
-.flex input {
-    flex:1;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>FMPOS License Generator</title>
+    <style>
+        body {
+            font-family: Arial, "Microsoft YaHei", sans-serif;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        h1, h2 { margin-bottom: 0.4em; }
+        .section {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        input[type="text"], input[type="date"] {
+            width: 100%;
+            padding: 6px 8px;
+            margin-top: 3px;
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 12px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            cursor: pointer;
+        }
+        .result {
+            margin-top: 12px;
+            background: #f2f2f2;
+            padding: 10px;
+            word-break: break-all;
+        }
+        .note { font-size: 12px; color: #666; }
+        .small { font-size: 12px; }
+    </style>
 </head>
 
 <body>
-
-<div class="container">
-
 <h1>FMPOS License Generator</h1>
-<p>
-ProductID 自动补全前缀 CHK-<br>
-MachineID 已移除（新版无需）
+<p class="small">
+    可在手机 / 电脑使用。<br>
+    ProductID = Sys!B2。
 </p>
 
-<!-- 主授权 -->
-<div class="box">
+<!-- 主授权码 -->
+<div class="section">
+    <h2>① 主授权码 / Main License Key</h2>
 
-<h2>① 主授权码 / Main License Key</h2>
+    <label>Product ID (Sys!B2)：</label>
+    <input type="text" id="productId">
 
-<label>Product ID（自动带 CHK-）：</label>
-<div class="flex">
-    <div class="prefix">CHK-</div>
-    <input id="pid" placeholder="输入后半段，例如：00012345">
+    <label>Expiry Date（YYYY-MM-DD）：</label>
+    <input type="date" id="expiryDate">
+
+    <button onclick="onGenerateLicense()">生成主授权码 / Generate License</button>
+
+    <div class="result" id="licenseResult"></div>
 </div>
 
-<label>Expiry Date（YYYY-MM-DD）：</label>
-<input type="date" id="date">
+<!-- B14 变更码 -->
+<div class="section">
+    <h2>② B14 变更授权码 / B14 Change Code</h2>
 
-<button onclick="gen()">生成主授权码 / Generate License</button>
+    <label>Product ID (Sys!B2)：</label>
+    <input type="text" id="chgProductId">
 
-<div class="result" id="out"></div>
+    <button onclick="onGenerateB14Code()">生成变更码 / Generate B14 Change Code</button>
 
+    <div class="result" id="b14Result"></div>
 </div>
 
-<!-- B14 -->
-<div class="box">
-
-<h2>② B14 变更授权码 / B14 Change Code</h2>
-
-<label>Product ID（自动带 CHK-）：</label>
-<div class="flex">
-    <div class="prefix">CHK-</div>
-    <input id="pid2" placeholder="输入后半段">
+<div class="section">
+    <h2>注意 / Important</h2>
+    <p class="note">
+        本页面包含 SECRET_KEY，请勿公开给客户。<br>
+        Keep this file private and only for internal use.
+    </p>
 </div>
 
-<button onclick="genB14()">生成变更码 / Generate B14 Change Code</button>
-
-<div class="result" id="out2"></div>
-
-</div>
-
-<div class="box">
-<h3>注意</h3>
-<p>本网页包含 SECRET_KEY，请勿公开给客户。</p>
-</div>
-
-</div>
-
-<script>
-
+<script type="text/javascript">
+/* ===== 常量 ===== */
 var SECRET_KEY = "TZTRAY-LICENSE-PRIVATE-2026";
-var CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+var ALLOWED_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-/* ===== Hash ===== */
-function hash32(txt, seed){
+function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+
+function hash32(txt, seed) {
     var h = seed, MOD = 2147483647;
-    for(var i=0;i<txt.length;i++){
-        var c = txt.charCodeAt(i);
-        h = h*33 + c;
-        h = h - Math.floor(h/MOD)*MOD;
-    }
-    return h|0;
+    for (var i = 0; i < txt.length; i++) h = h * 33 + txt.charCodeAt(i), h = h - Math.floor(h / MOD) * MOD;
+    return h | 0;
 }
 
-function longBytes(l){
-    return [l&255,(l>>>8)&255,(l>>>16)&255,(l>>>24)&255];
+function longToBytes(l) {
+    l = l | 0;
+    return [l & 0xFF, (l >>> 8) & 0xFF, (l >>> 16) & 0xFF, (l >>> 24) & 0xFF];
 }
 
-function hashBytes(txt){
-    var h1 = hash32(txt,5381);
-    var h2 = hash32(txt,2166136261);
-    var b1 = longBytes(h1), b2 = longBytes(h2);
-    var out = [];
-    for(var i=0;i<4;i++){
-        out[i]=b1[i];
-        out[i+4]=b2[i];
-        out[i+8]=b1[i]^b2[i];
-        out[i+12]=(b1[i]+b2[i])&255;
+function hashToBytes(txt) {
+    var h1 = hash32(txt, 5381), h2 = hash32(txt, 2166136261);
+    var b1 = longToBytes(h1), b2 = longToBytes(h2);
+    var out = new Array(16);
+    for (var i = 0; i < 4; i++) {
+        out[i] = b1[i]; out[i+4] = b2[i]; out[i+8] = b1[i]^b2[i]; out[i+12] = (b1[i]+b2[i])&0xFF;
     }
     return out;
 }
 
-function encode(b){
-    var s="";
-    for(var i=0;i<b.length;i++){
-        s+=CHARS[b[i]%CHARS.length];
-    }
+function encodeBytes(bytes) {
+    var s="", base=ALLOWED_CHARS.length;
+    for (var i=0;i<bytes.length;i++) s+=ALLOWED_CHARS.charAt(bytes[i]%base);
     return s;
 }
 
-/* ===== 主授权 ===== */
-function gen(){
+/* ===== 主授权码生成 ===== */
+function generateLicense(productId, expiryDateStr) {
+    productId = productId.trim().toUpperCase();
 
-    var pid = document.getElementById("pid").value.trim().toUpperCase();
-    var d = document.getElementById("date").value;
-    var out = document.getElementById("out");
+    var y,m,d;
+    if (expiryDateStr.indexOf("-")>=0){
+        var parts = expiryDateStr.split("-");
+        y=parts[0]; m=parts[1]; d=parts[2];
+    } else {
+        if (expiryDateStr.length!==8) throw new Error("无效日期格式 Invalid date.");
+        y=expiryDateStr.substring(0,4); m=expiryDateStr.substring(4,6); d=expiryDateStr.substring(6,8);
+    }
+    var yyyymmdd = y+m+d;
+    var mmddyyyy = m+d+y;
 
-    if(!pid || !d){
-        out.innerText="请填写完整";
+    var payload = productId + "|" + yyyymmdd + "|" + SECRET_KEY;
+    var hashText = encodeBytes(hashToBytes(payload));
+
+    var p1 = hashText.substring(0,4);
+    var p2 = hashText.substring(4,8);
+    var p4 = hashText.substring(8,10);
+
+    return "ID-" + p1 + "-" + p2 + "-" + mmddyyyy + "-" + p4;
+}
+
+/* ===== B14 变更码生成 ===== */
+function generateB14ChangeCode(productId, dateObj) {
+    productId = productId.trim().toUpperCase();
+
+    var y=dateObj.getFullYear(), m=pad2(dateObj.getMonth()+1), d=pad2(dateObj.getDate());
+    var stamp = ""+y+m+d;
+
+    var payload = "CHG|" + productId + "|" + stamp + "|" + SECRET_KEY;
+    var hashText = encodeBytes(hashToBytes(payload));
+
+    return hashText.substring(0,8).toUpperCase();
+}
+
+/* ===== 页面交互 ===== */
+function onGenerateLicense() {
+    var productId = document.getElementById("productId").value;
+    var expiryDate = document.getElementById("expiryDate").value;
+    var out = document.getElementById("licenseResult");
+
+    if (!productId || !expiryDate) {
+        out.textContent = "请先填写 ProductID / 到期日。";
         return;
     }
 
-    var productID = "CHK-" + pid;
-
-    var p = d.split("-");
-    var y=p[0], m=p[1], day=p[2];
-
-    // ⭐ 完全匹配 VBA
-    var payload = productID + "|" + y+m+day + "|" + SECRET_KEY;
-
-    var h = encode(hashBytes(payload));
-
-    var key =
-        h.substr(0,4)+"-"+
-        h.substr(4,4)+"-"+
-        m+day+y+"-"+
-        h.substr(0,2);
-
-    out.innerText = key;
+    try { out.textContent = "授权码:\n" + generateLicense(productId, expiryDate); }
+    catch(err){ out.textContent = "错误: " + err.message; }
 }
 
-/* ===== B14 ===== */
-function genB14(){
+function onGenerateB14Code() {
+    var productId = document.getElementById("chgProductId").value;
+    var out = document.getElementById("b14Result");
+    if (!productId) { out.textContent="请填写 ProductID。"; return; }
 
-    var pid = document.getElementById("pid2").value.trim().toUpperCase();
-    var out = document.getElementById("out2");
-
-    if(!pid){
-        out.innerText="请输入 ProductID";
-        return;
-    }
-
-    var productID = "CHK-" + pid;
-
-    var now = new Date();
-    var y = now.getFullYear();
-    var m = String(now.getMonth()+1).padStart(2,'0');
-    var d = String(now.getDate()).padStart(2,'0');
-
-    var stamp = y+m+d;
-
-    // ⭐ 完全匹配 VBA
-    var payload = "CHG|" + productID + "|" + stamp + "|" + SECRET_KEY;
-
-    var h = encode(hashBytes(payload));
-
-    out.innerText = h.substr(0,8);
+    var today = new Date();
+    var code = generateB14ChangeCode(productId, today);
+    var y = today.getFullYear(), m = pad2(today.getMonth()+1), d = pad2(today.getDate());
+    out.textContent = "今日日期: "+y+"-"+m+"-"+d+"\nB14 变更码:\n"+code+"\n(仅当天有效)";
 }
-
 </script>
-
 </body>
 </html>
