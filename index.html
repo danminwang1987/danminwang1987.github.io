@@ -5,31 +5,33 @@
 <title>FMPOS License Generator</title>
 
 <style>
-body {
+body{
     font-family: Arial;
-    max-width: 600px;
-    margin: auto;
-    padding: 20px;
+    max-width:600px;
+    margin:auto;
+    padding:20px;
 }
-.section {
-    border: 1px solid #ccc;
-    padding: 15px;
-    border-radius: 8px;
+.section{
+    border:1px solid #ccc;
+    padding:15px;
+    border-radius:8px;
+    margin-bottom:20px;
 }
-input {
-    width: 100%;
-    padding: 10px;
-    margin-top: 5px;
+input{
+    width:100%;
+    padding:10px;
+    margin-top:5px;
 }
-button {
-    margin-top: 10px;
-    padding: 10px;
-    width: 100%;
+button{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
 }
-.result {
-    margin-top: 10px;
-    background: #f2f2f2;
-    padding: 10px;
+.result{
+    margin-top:10px;
+    background:#f2f2f2;
+    padding:10px;
+    word-break:break-all;
 }
 </style>
 </head>
@@ -38,13 +40,16 @@ button {
 
 <h1>FMPOS License Generator</h1>
 
+<!-- 主授权码 -->
 <div class="section">
 
+<h3>主授权码</h3>
+
 <label>Product ID：</label>
-<input type="text" id="productId" placeholder="直接输入完整ID（不要加前缀）">
+<input type="text" id="pid">
 
 <label>Expiry Date：</label>
-<input type="date" id="expiryDate">
+<input type="date" id="date">
 
 <button onclick="gen()">生成授权码</button>
 
@@ -52,49 +57,80 @@ button {
 
 </div>
 
+<!-- B14 -->
+<div class="section">
+
+<h3>B14 变更码</h3>
+
+<label>Product ID：</label>
+<input type="text" id="pid2">
+
+<button onclick="genB14()">生成变更码</button>
+
+<div class="result" id="out2"></div>
+
+</div>
+
 <script>
 
 var SECRET_KEY = "TZTRAY-LICENSE-PRIVATE-2026";
-var ALLOWED = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+var CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+/* ===== Hash32 ===== */
 function hash32(txt, seed){
-    var h = seed, MOD = 2147483647;
+    var h = seed;
+    var MOD = 2147483647;
     for(var i=0;i<txt.length;i++){
-        h = h*33 + txt.charCodeAt(i);
+        var c = txt.charCodeAt(i);
+        h = h*33 + c;
         h = h - Math.floor(h/MOD)*MOD;
     }
     return h|0;
 }
 
+/* ===== LongToBytes ===== */
 function longBytes(l){
-    return [l&255,(l>>>8)&255,(l>>>16)&255,(l>>>24)&255];
+    return [
+        l & 255,
+        (l>>>8)&255,
+        (l>>>16)&255,
+        (l>>>24)&255
+    ];
 }
 
+/* ===== HashToBytes ===== */
 function hashBytes(txt){
     var h1 = hash32(txt,5381);
     var h2 = hash32(txt,2166136261);
-    var b1 = longBytes(h1), b2 = longBytes(h2);
-    var o = [];
+
+    var b1 = longBytes(h1);
+    var b2 = longBytes(h2);
+
+    var out = [];
+
     for(var i=0;i<4;i++){
-        o[i]=b1[i];
-        o[i+4]=b2[i];
-        o[i+8]=b1[i]^b2[i];
-        o[i+12]=(b1[i]+b2[i])&255;
+        out[i]=b1[i];
+        out[i+4]=b2[i];
+        out[i+8]=b1[i]^b2[i];
+        out[i+12]=(b1[i]+b2[i])&255;
     }
-    return o;
+    return out;
 }
 
+/* ===== EncodeBytes ===== */
 function encode(b){
     var s="";
     for(var i=0;i<b.length;i++){
-        s+=ALLOWED[b[i]%ALLOWED.length];
+        s+=CHARS[b[i]%CHARS.length];
     }
     return s;
 }
 
+/* ===== 主授权码 ===== */
 function gen(){
-    var pid = document.getElementById("productId").value.trim().toUpperCase();
-    var d = document.getElementById("expiryDate").value;
+
+    var pid = document.getElementById("pid").value.trim();
+    var d = document.getElementById("date").value;
     var out = document.getElementById("out");
 
     if(!pid || !d){
@@ -103,15 +139,48 @@ function gen(){
     }
 
     var p = d.split("-");
-    var y = p[0], m = p[1], day = p[2];
+    var y=p[0], m=p[1], day=p[2];
 
+    // VBA: productID | yyyymmdd | SECRET_KEY
     var payload = pid + "|" + y+m+day + "|" + SECRET_KEY;
 
     var h = encode(hashBytes(payload));
 
-    var key = h.substr(0,4)+"-"+h.substr(4,4)+"-"+m+day+y+"-"+h.substr(0,2);
+    // VBA:
+    // Left(4) - Mid(5,4) - mmddyyyy - Mid(1,2)
+    var key =
+        h.substr(0,4) + "-" +
+        h.substr(4,4) + "-" +
+        m+day+y + "-" +
+        h.substr(0,2);
 
     out.innerText = key;
+}
+
+/* ===== B14 ===== */
+function genB14(){
+
+    var pid = document.getElementById("pid2").value.trim();
+    var out = document.getElementById("out2");
+
+    if(!pid){
+        out.innerText="请输入 ProductID";
+        return;
+    }
+
+    var now = new Date();
+    var y = now.getFullYear();
+    var m = String(now.getMonth()+1).padStart(2,'0');
+    var d = String(now.getDate()).padStart(2,'0');
+
+    var stamp = y+m+d;
+
+    // VBA: CHG|productID|yyyymmdd|SECRET_KEY
+    var payload = "CHG|" + pid + "|" + stamp + "|" + SECRET_KEY;
+
+    var h = encode(hashBytes(payload));
+
+    out.innerText = h.substr(0,8);
 }
 
 </script>
