@@ -42,12 +42,12 @@ button {
 
 <body>
 
-<h2>主授权码 / Main License</h2>
+<h2>FMPOS 主授权码 / Main License</h2>
 
 <label>Product ID（产品编号）：</label>
 <input type="text" id="productId" placeholder="只输入编号（系统自动加 ID-）">
 
-<label>到期日期 / Expiry Date：</label>
+<label>Expiry Date / 到期日期：</label>
 <input type="date" id="expiryDate">
 
 <button onclick="genLicense()">生成授权码 / Generate License</button>
@@ -129,13 +129,13 @@ function genLicense(){
     var payload = pid + "|" + yyyymmdd + "|" + SECRET_KEY;
     var hash = encode(hashToBytes(payload));
 
-    var key = "ID-" +
+    var key =
         hash.substring(0,4)+"-" +
         hash.substring(4,8)+"-" +
         mmddyyyy+"-" +
         hash.substring(0,2);
 
-    out.innerText = "授权码 / License Key:\n" + key;
+    out.innerText = key;
 }
 
 /* ===== B14 ===== */
@@ -160,7 +160,7 @@ function genB14(){
     var payload = "CHG|" + pid + "|" + stamp + "|" + SECRET_KEY;
     var hash = encode(hashToBytes(payload));
 
-    out.innerText = "变更码 / Change Code:\n" + hash.substring(0,8);
+    out.innerText = hash.substring(0,8);
 }
 </script>
 
