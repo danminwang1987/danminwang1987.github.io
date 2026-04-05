@@ -5,7 +5,7 @@
     <title>FMPOS License Generator</title>
     <style>
         body {
-            font-family: Arial, "Microsoft YaHei", sans-serif;
+            font-family: Times New Roman, "Microsoft YaHei", sans-serif;
             max-width: 720px;
             margin: 0 auto;
             padding: 16px;
@@ -50,18 +50,17 @@
 <h1>FMPOS License Generator</h1>
 <p class="small">
     可在手机 / 电脑使用。<br>
-    ProductID = Sys!B2。
 </p>
 
 <!-- 主授权码 -->
 <div class="section">
     <h2>① 主授权码 / Main License Key</h2>
 
-    <label>Product ID (Sys!B2)：</label>
-    <input type="text" id="productId">
+    <label style="font-weight:bold;">Product ID (自动带前缀 ID-)：</label>
+    <input type="text" id="productId" value="ID-" style="font-weight:normal;">
 
-    <label>Expiry Date（YYYY-MM-DD）：</label>
-    <input type="date" id="expiryDate">
+    <label style="font-weight:bold;">Expiry Date（MM-DD-YYYY）：</label>
+    <input type="text" id="expiryDate" placeholder="MM-DD-YYYY" style="width:50%; padding:6px 8px; box-sizing:border-box;">
 
     <button onclick="onGenerateLicense()">生成主授权码 / Generate License</button>
 
