@@ -2,30 +2,30 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>FMPOS License Generator</title>
+<title>License Generator</title>
 
 <style>
 body {
-    font-family: Arial;
-    max-width: 600px;
+    font-family: Arial, "Microsoft YaHei";
+    max-width: 650px;
     margin: 20px auto;
 }
 
 label {
     display: block;
     font-weight: bold;
-    margin-top: 10px;
+    margin-top: 12px;
 }
 
 input {
     width: 100%;
-    padding: 6px;
+    padding: 8px;
     margin-top: 4px;
     box-sizing: border-box;
 }
 
 button {
-    margin-top: 12px;
+    margin-top: 14px;
     padding: 10px;
     width: 100%;
     cursor: pointer;
@@ -42,25 +42,25 @@ button {
 
 <body>
 
-<h2>Main License</h2>
+<h2>主授权码 / Main License</h2>
 
-<label>Product ID：</label>
+<label>Product ID（产品编号）：</label>
 <input type="text" id="productId" placeholder="只输入编号（系统自动加 ID-）">
 
-<label>Expiry Date（MM-DD-YYYY）：</label>
-<input type="text" id="expiryDate" placeholder="MM-DD-YYYY">
+<label>到期日期 / Expiry Date：</label>
+<input type="date" id="expiryDate">
 
-<button onclick="genLicense()">Generate License</button>
+<button onclick="genLicense()">生成授权码 / Generate License</button>
 
 <div class="result" id="out1"></div>
 
 
-<h2>B14 Change Code</h2>
+<h2>编号变更码 / B14 Change Code</h2>
 
-<label>Product ID：</label>
+<label>Product ID（产品编号）：</label>
 <input type="text" id="chgPid" placeholder="只输入编号（系统自动加 ID-）">
 
-<button onclick="genB14()">Generate B14 Code</button>
+<button onclick="genB14()">生成变更码 / Generate B14 Code</button>
 
 <div class="result" id="out2"></div>
 
@@ -69,6 +69,7 @@ button {
 var SECRET_KEY = "TZTRAY-LICENSE-PRIVATE-2026";
 var ALLOWED = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+/* ===== Hash ===== */
 function hash32(txt, seed){
     var h = seed, MOD = 2147483647;
     for(var i=0;i<txt.length;i++){
@@ -106,29 +107,26 @@ function encode(bytes){
 /* ===== 主授权码 ===== */
 function genLicense(){
     var raw = document.getElementById("productId").value.trim().toUpperCase();
-    var date = document.getElementById("expiryDate").value.trim();
+    var date = document.getElementById("expiryDate").value;
     var out = document.getElementById("out1");
 
     if(!raw || !date){
-        out.innerText="请输入 ProductID 和日期";
+        out.innerText="请输入 ProductID 和日期\nPlease enter ProductID and date";
         return;
     }
 
     var pid = "ID-" + raw;
 
+    // yyyy-mm-dd → 拆分
     var parts = date.split("-");
-    if(parts.length!==3){
-        out.innerText="日期格式错误（MM-DD-YYYY）";
-        return;
-    }
-
-    var mm=parts[0], dd=parts[1], yy=parts[2];
+    var yy = parts[0];
+    var mm = parts[1];
+    var dd = parts[2];
 
     var yyyymmdd = yy+mm+dd;
     var mmddyyyy = mm+dd+yy;
 
     var payload = pid + "|" + yyyymmdd + "|" + SECRET_KEY;
-
     var hash = encode(hashToBytes(payload));
 
     var key = "ID-" +
@@ -137,7 +135,7 @@ function genLicense(){
         mmddyyyy+"-" +
         hash.substring(0,2);
 
-    out.innerText = key;
+    out.innerText = "授权码 / License Key:\n" + key;
 }
 
 /* ===== B14 ===== */
@@ -146,7 +144,7 @@ function genB14(){
     var out = document.getElementById("out2");
 
     if(!raw){
-        out.innerText="请输入 ProductID";
+        out.innerText="请输入 ProductID\nPlease enter ProductID";
         return;
     }
 
@@ -160,10 +158,9 @@ function genB14(){
     var stamp = ""+y+m+da;
 
     var payload = "CHG|" + pid + "|" + stamp + "|" + SECRET_KEY;
-
     var hash = encode(hashToBytes(payload));
 
-    out.innerText = hash.substring(0,8);
+    out.innerText = "变更码 / Change Code:\n" + hash.substring(0,8);
 }
 </script>
 
