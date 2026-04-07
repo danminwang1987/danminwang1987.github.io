@@ -54,7 +54,15 @@ button {
 
 <div class="result" id="out1"></div>
 
+<h2>A7 变更码 / A7 Change Code</h2>
 
+<label>Product ID（产品编号）：</label>
+<input type="text" id="chgPidA7" placeholder="只输入编号（系统自动加 ID-）">
+
+<button onclick="genA7()">生成变更码 / Generate A7 Code</button>
+
+<div class="result" id="outA7"></div>
+    
 <h2>编号变更码 / B14 Change Code</h2>
 
 <label>Product ID（产品编号）：</label>
@@ -138,6 +146,31 @@ function genLicense(){
     out.innerText = key;
 }
 
+    function genA7(){
+    var raw = document.getElementById("chgPidA7").value.trim().toUpperCase();
+    var out = document.getElementById("outA7");
+
+    if(!raw){
+        out.innerText="请输入 ProductID\nPlease enter ProductID";
+        return;
+    }
+
+    var pid = "ID-" + raw;
+
+    var d = new Date();
+    var y=d.getFullYear();
+    var m=("0"+(d.getMonth()+1)).slice(-2);
+    var da=("0"+d.getDate()).slice(-2);
+
+    var stamp = ""+y+m+da;
+
+    // ⭐ 关键区别：A7CHG
+    var payload = "A7CHG|" + pid + "|" + stamp + "|" + SECRET_KEY;
+    var hash = encode(hashToBytes(payload));
+
+    out.innerText = hash.substring(0,8);
+}
+    
 /* ===== B14 ===== */
 function genB14(){
     var raw = document.getElementById("chgPid").value.trim().toUpperCase();
